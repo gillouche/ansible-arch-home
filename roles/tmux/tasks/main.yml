@@ -1,0 +1,51 @@
+---
+# tasks file for tmux
+
+- name: Set variables
+  set_fact:
+    user_systemd_service_path: /home/{{ target_user }}/.config/systemd/user
+
+- name: Install tmux 
+  pacman:
+    state: latest
+    name: tmux
+
+- name: Create directory for the systemd service user
+  file:
+    path: "{{ user_systemd_service_path }}"
+    state: directory
+    recurse: yes
+    owner: "{{ target_user }}"
+    group: "{{ target_user }}"
+    mode: 0755
+
+- name: Create symbolic link for tmux to dotfiles
+  file:
+    src:  /home/{{ target_user }}/workspace/dotfiles/tmux/tmux.conf
+    dest: /home/{{ target_user }}/.tmux.conf
+    owner: "{{ target_user }}"
+    group: "{{ target_user }}"
+    state: link
+
+- name: Create symlink tmux service to systemd user
+  file:
+    src: /home/{{ target_user }}/workspace/dotfiles/systemd/tmux.service
+    dest: /home/{{ target_user }}/.config/systemd/user/tmux.service
+    state: link
+
+- name: Register uid of {{ target_user }}
+  command: id -u {{ target_user }}
+  register: uid
+
+- name: Start tmux service for user
+  systemd:
+    name: tmux.service
+    enabled: true 
+    scope: user
+    state: restarted
+  become_method: runas
+  become_user: "{{ target_user }}"
+  environment:
+    XDG_RUNTIME_DIR: /run/user/{{uid.stdout}}
+    DBUS_SESSION_BUS_ADDRESS: /run/user/{{uid.stdout}}/bus
+...

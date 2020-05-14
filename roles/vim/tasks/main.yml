@@ -1,0 +1,71 @@
+---
+# tasks file for vim
+
+- name: Uninstall vim
+  pacman:
+    name: vim
+    state: absent
+
+- name: Install neovim
+  pacman:
+    name: neovim
+    state: latest
+
+- name: Check if nvimrc exists
+  stat:
+    path: /home/{{ target_user }}/.nvimrc
+  register: vim_config_stat
+    
+- name: Create nvim config folder
+  file:
+    path: /home/{{ target_user }}/.config/nvim/bundle
+    owner: "{{ target_user }}"
+    group: "{{ target_user }}"
+    state: directory
+    recurse: yes
+    
+- name: Set repo path variable
+  set_fact:
+    repo_local_path: /home/{{ target_user }}/workspace/dotfiles
+
+- name: Check if repo has already been cloned
+  stat:
+    path: "{{ repo_local_path }}"
+  register: stat_repo
+
+- name: Create symbolic link for nvim colors to dotfiles
+  file:
+    src:  /home/{{ target_user }}/workspace/dotfiles/vim/colors
+    dest: /home/{{ target_user }}/.config/nvim/colors
+    owner: "{{ target_user }}"
+    group: "{{ target_user }}"
+    state: link
+  when: not vim_config_stat.stat.exists
+
+- name: Create symbolic link for nvim config to dotfiles
+  file:
+    src:  /home/{{ target_user }}/workspace/dotfiles/vim/config
+    dest: /home/{{ target_user }}/.config/nvim/config
+    owner: "{{ target_user }}"
+    group: "{{ target_user }}"
+    state: link
+  when: not vim_config_stat.stat.exists
+
+- name: Create symbolic link for init.vim to dotfiles
+  file:
+    src:  /home/{{ target_user }}/workspace/dotfiles/vim/init.vim
+    dest: /home/{{ target_user }}/.config/nvim/init.vim
+    owner: "{{ target_user }}"
+    group: "{{ target_user }}"
+    state: link
+  when: not vim_config_stat.stat.exists
+
+- name: Create symbolic link for $HOME/.nvimrc
+  file:
+    src:  /home/{{ target_user }}/workspace/dotfiles/vim/vimrc
+    dest: /home/{{ target_user }}/.nvimrc
+    owner: "{{ target_user }}"
+    group: "{{ target_user }}"
+    state: link
+  when: not vim_config_stat.stat.exists
+...

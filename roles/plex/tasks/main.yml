@@ -1,0 +1,34 @@
+---
+# tasks file for plex
+
+- name: Set variable
+  set_fact:
+    config_local_path: /home/{{ target_user }}/workspace/dotfiles
+    auracle_work_dir_path: /tmp/auracle
+    package_build_path: /tmp/auracle/plex-media-server
+    package_name: plex-media-server
+
+- name: Download package
+  shell:
+    cmd: auracle download {{ package_name }}
+    chdir: "{{ auracle_work_dir_path }}"
+  become_method: runas
+  become_user: "{{ target_user }}"
+
+- name: Build package
+  shell: 
+    cmd: yes | makepkg -sr
+    chdir:  "{{ package_build_path }}"
+  become_method: runas
+  become_user: "{{ target_user }}"
+
+- name: Register package name
+  shell:
+    cmd: ls {{ package_name }}*.tar.xz
+    chdir:  "{{ package_build_path }}"
+  register: built_package_name
+
+- name: Install package with pacman
+  pacman:
+    name: "{{ package_build_path }}/{{ built_package_name.stdout_lines[0] }}"
+    state: present

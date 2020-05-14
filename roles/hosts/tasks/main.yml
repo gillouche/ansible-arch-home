@@ -1,0 +1,120 @@
+---
+# tasks file for hosts
+
+- name: Set repo path variable
+  set_fact:
+    repo_local_path: /home/{{ target_user }}/workspace/hosts
+    venv_path: /home/{{ target_user }}/workspace/hosts/venv
+
+- name: Check if repo has already been cloned
+  stat:
+    path: "{{ repo_local_path }}"
+  register: stat_repo
+
+- name: Hard reset any changed files in the repo
+  command: git reset --hard origin/master
+  args:
+    chdir: "{{ repo_local_path }}"
+  become_method: runas
+  become_user: "{{ target_user }}"
+  when: stat_repo.stat.exists
+
+- name: Pull StevenBlack/hosts project from GitHub
+  git:
+    repo: https://github.com/StevenBlack/hosts
+    dest: "{{ repo_local_path }}"
+  become_method: runas
+  become_user: "{{ target_user }}"
+
+- name: Copy personalized hosts file that will be integrated to the final hosts file 
+  template:
+    src: etc/hosts.j2
+    dest: "{{ repo_local_path }}/myhosts"
+    owner: "{{ target_user }}"
+    group: "{{ target_user }}"
+    mode: 0644
+
+- name: Change repo directory owner and groups
+  file: 
+    dest: "{{ repo_local_path }}"
+    owner: "{{ target_user }}"
+    group: "{{ target_user }}"
+    recurse: true
+    mode: u=rwX,g=rX,o=rX
+    
+- name: Install python dependencies
+  pip:
+    requirements: "{{ repo_local_path }}/requirements.txt"
+    virtualenv: "{{ venv_path }}"
+
+- name: Copy exec venv script
+  template: 
+    src: venv_exec.j2 
+    dest: "{{ venv_path }}/exec"
+    owner: "{{ target_user }}"
+    group: "{{ target_user }}"
+    mode: 0755
+    
+- name: Generate custom hosts file
+  command: "{{ venv_path }}/exec python3 updateHostsFile.py --auto"
+  args:
+    chdir: "{{ repo_local_path }}"
+  become_method: runas
+  become_user: "{{ target_user }}"
+
+- name: Remove the unwanted metadata as we want to compare checksums to see if we need to update it or not
+  lineinfile:
+    path: "{{ repo_local_path }}/hosts"
+    regexp: '^#\sDate.*'
+    state: absent
+  become_method: runas
+  become_user: "{{ target_user }}"
+
+- name: Get checksum of current hosts file 
+  stat:
+    path: "/etc/hosts"
+  register: current_hosts_file 
+
+- name: Set fact current hosts checksum
+  set_fact:
+    current_host_checksum: "{{ current_hosts_file.stat.checksum }}"
+
+- name: Get checksum of generated hosts file
+  stat:
+    path: "{{ repo_local_path }}/hosts"
+  register: generated_hosts_file
+
+- name: Set fact generated hosts checksum
+  set_fact:
+    generated_host_checksum: "{{ generated_hosts_file.stat.checksum }}"
+
+- name: Create backup of hosts file if it needs to be updated
+  copy:
+    src: "/etc/hosts"
+    dest: "/etc/hosts_backup"
+  when: current_host_checksum != generated_host_checksum
+
+- name: Update hosts file
+  copy:
+    src: "{{ repo_local_path }}/hosts"
+    dest: "/etc/hosts"
+  when: current_host_checksum != generated_host_checksum
+
+- name: Restart network interface to take into account the change
+  systemd:
+    name: NetworkManager
+    state: restarted
+  when: current_host_checksum != generated_host_checksum
+
+- name: Wait for network to be restarted before continuing the playbook
+  uri:
+    url: "https://www.google.com"
+    status_code: 200
+    follow_redirects: none
+    method: GET
+  register: result
+  until: result.status == 200
+  retries: 60
+  delay: 2
+  when: current_host_checksum != generated_host_checksum
+...

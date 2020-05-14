@@ -1,0 +1,52 @@
+---
+# tasks file for machine-learning
+
+- name: Install packages
+  pacman: 
+    state: latest
+    name: ['python-tensorflow-cuda', 'python-pytorch-cuda', 'jupyter-notebook', 'jupyterlab', 'python-ipykernel', 'r', 'julia', 'cuda', 'cudnn', 'nvidia', 'tensorboard']
+
+- name: Set variable for rstudio
+  set_fact:
+    config_local_path: /home/{{ target_user }}/workspace/dotfiles
+    auracle_work_dir_path: /tmp/auracle
+    package_build_path: /tmp/auracle/rstudio-desktop-git
+    package_name: rstudio-desktop-git
+
+- name: Download package rstudio
+  shell:
+    cmd: auracle download {{ package_name }}
+    chdir: "{{ auracle_work_dir_path }}"
+  become_method: runas
+  become_user: "{{ target_user }}"
+
+- name: Build package
+  shell: 
+    cmd: yes | makepkg -sr
+    chdir:  "{{ package_build_path }}"
+  become_method: runas
+  become_user: "{{ target_user }}"
+
+- name: Register package name
+  shell:
+    cmd: ls {{ package_name }}*.tar.xz
+    chdir:  "{{ package_build_path }}"
+  register: built_package_name
+
+- name: Install package with pacman
+  pacman:
+    name: "{{ package_build_path }}/{{ built_package_name.stdout_lines[0] }}"
+    state: present
+
+- name: Add jupyter notebook kernel for R
+  shell:
+    cmd: R -e "install.packages('IRkernel')" && R -e "IRkernel::installspec()"
+  become_method: runas
+  become_user: "{{ target_user }}"
+
+- name: Add jupyter notebook kernel for Julia
+  shell:
+    cmd: julia {{ config_local_path }}/julia/install.jl 
+  become_method: runas
+  become_user: "{{ target_user }}"
+...

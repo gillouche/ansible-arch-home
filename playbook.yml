@@ -1,0 +1,31 @@
+---
+# playbook used to provision apps common to all my environments
+
+- hosts: all
+  become: yes
+  become_method: sudo
+  roles:
+    - check-requirements
+    - env-setup
+    - ssh
+    - git
+    - zsh
+    - web-browsers
+    - vim
+    - hosts
+    - docker
+    - caprine
+    - tmux
+    - javascript
+    - discord
+    - auracle
+    - jetbrains
+    - spotify
+    - postman
+    - vscodium
+    - foldingathome
+    - slack
+    - machine-learning
+    - plex
+    - awscli
+...

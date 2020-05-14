@@ -1,0 +1,51 @@
+---
+# tasks file for zsh
+
+- name: Install packages
+  pacman:
+    name: ['zsh']
+    state: latest
+
+- name: Set variables
+  set_fact:
+    user_home: /home/{{ target_user }}
+    user_zsh_directory: "/home/{{ target_user }}/.zsh"
+    user_zshrc: "/home/{{ target_user }}/.zshrc"
+    user_ohmyzsh_directory: "/home/{{ target_user }}/.oh-my-zsh"
+    user_dotfiles_folder: "/home/{{ target_user }}/workspace/dotfiles"
+
+- name: Check if oh my zsh has already been installed for the user 
+  stat:
+    path: "{{ user_ohmyzsh_directory }}"
+  register: user_oh_my_zsh
+
+- name: Install oh my zsh
+  shell: sh -c "$(curl -fsSL https://raw.githubusercontent.com/robbyrussell/oh-my-zsh/master/tools/install.sh)"
+  args:
+    chdir: "{{ user_home }}"
+  become_method: runas
+  become_user: "{{ target_user }}"
+  when: not user_oh_my_zsh.stat.exists
+  ignore_errors: true
+
+- name: Create .zsh directory in user home 
+  file:
+    path: "{{ user_zsh_directory }}"
+    state: directory
+    owner: "{{ target_user }}"
+    group: "{{ target_user }}" 
+    mode: 0755
+
+- name: Create symlink with dotfiles config
+  file:
+    src: "{{ user_dotfiles_folder }}/zsh/zshrc"
+    dest: "{{ user_home }}/.zshrc"
+    state: link
+
+- name: Add scripts path to zshrc user
+  lineinfile:
+    path: /home/{{ target_user }}/.zshrc
+    line: 'path+=("/home/{{ target_user }}/workspace/scripts")'
+    state: present
+    insertafter: path=\(\$path\[@\].*
+... 

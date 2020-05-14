@@ -1,0 +1,57 @@
+---
+# tasks file for auracle
+
+- name: Set variables
+  set_fact:
+    auracle_work_dir_path: /tmp/auracle/auracle
+
+- name: Check if auracle is installed
+  shell:
+    cmd: which auracle
+  register: auracle_path
+
+- name: Remove work dir if existing
+  file:
+    path: "{{ auracle_work_dir_path }}"
+    state: absent
+  when: not auracle_path
+
+- name: Create working directory
+  file:
+    path: "{{ auracle_work_dir_path }}"
+    state: directory
+    owner: "{{ target_user }}"
+    group: "{{ target_user }}"
+    mode: 0755
+    recurse: yes
+  when: not auracle_path
+
+- name: Download PKGBUILD of auracle
+  get_url:
+    url: https://aur.archlinux.org/cgit/aur.git/plain/PKGBUILD?h=auracle-git
+    dest: "{{ auracle_work_dir_path }}/PKGBUILD"
+    owner: "{{ target_user }}"
+    group: "{{ target_user }}"
+    mode: 0644
+  when: not auracle_path
+
+- name: Build auracle
+  shell: 
+    cmd: yes | makepkg -sr
+    chdir:  "{{ auracle_work_dir_path }}"
+  become_method: runas
+  become_user: "{{ target_user }}"
+  when: not auracle_path
+
+- name: Register package name
+  shell:
+    cmd: ls auracle-git*.tar.xz
+    chdir:  "{{ auracle_work_dir_path }}"
+  register: auracle_package_name
+  when: not auracle_path
+
+- name: Install auracle with pacman
+  pacman:
+    name: "{{ auracle_work_dir_path }}/{{ auracle_package_name.stdout_lines[0] }}"
+    state: present
+  when: not auracle_path

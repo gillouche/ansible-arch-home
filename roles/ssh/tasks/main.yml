@@ -1,0 +1,38 @@
+---
+# tasks file for ssh
+
+- name: Set variables
+  set_fact:
+    user_systemd_service_path: /home/{{ target_user }}/.config/systemd/user
+
+- name: Create directory for the systemd service user
+  file:
+    path: "{{ user_systemd_service_path }}"
+    state: directory
+    recurse: yes
+    owner: "{{ target_user }}"
+    group: "{{ target_user }}"
+    mode: 0755
+
+- name: Create symlink ssh-agent service to systemd user
+  file:
+    src: /home/{{ target_user }}/workspace/dotfiles/systemd/ssh-agent.service
+    dest: "{{ user_systemd_service_path }}/ssh-agent.service"
+    state: link
+
+- name: Register uid of {{ target_user }}
+  command: id -u {{ target_user }}
+  register: uid
+
+- name: Start ssh agent for user
+  systemd:
+    name: ssh-agent.service
+    enabled: true 
+    scope: user
+    state: restarted
+  become_method: runas
+  become_user: "{{ target_user }}"
+  environment:
+    XDG_RUNTIME_DIR: /run/user/{{uid.stdout}}
+    DBUS_SESSION_BUS_ADDRESS: /run/user/{{uid.stdout}}/bus
+...

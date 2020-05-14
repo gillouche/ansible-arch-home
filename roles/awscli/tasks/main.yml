@@ -1,0 +1,8 @@
+---
+# tasks file for awscli
+
+- name: Install aws-cli from repo
+  pacman:
+    name: aws-cli
+    state: latest
+    

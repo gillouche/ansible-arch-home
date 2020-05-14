@@ -1,0 +1,83 @@
+---
+# tasks file for foldingathome
+
+- name: Set variable
+  set_fact:
+    config_local_path: /home/{{ target_user }}/workspace/dotfiles
+    auracle_work_dir_path: /tmp/auracle
+    package_build_path: /tmp/auracle/foldingathome
+    package_name: foldingathome
+
+- name: Download package foldingathome
+  shell:
+    cmd: auracle download {{ package_name }}
+    chdir: "{{ auracle_work_dir_path }}"
+  become_method: runas
+  become_user: "{{ target_user }}"
+
+- name: Build package foldingathome
+  shell: 
+    cmd: yes | makepkg -sr
+    chdir:  "{{ package_build_path }}"
+  become_method: runas
+  become_user: "{{ target_user }}"
+
+- name: Register package name foldingathome
+  shell:
+    cmd: ls {{ package_name }}*.tar.xz
+    chdir:  "{{ package_build_path }}"
+  register: built_package_name
+
+- name: Install package with pacman
+  pacman:
+    name: "{{ package_build_path }}/{{ built_package_name.stdout_lines[0] }}"
+    state: present
+
+- name: Remove default config
+  file:
+    path: /etc/foldingathome/config.xml
+    state: absent
+
+- name: Add config
+  copy:
+    src: "{{ config_local_path }}/foldingathome/config.xml"
+    dest: /etc/foldingathome/config.xml
+    mode: 0644
+
+- name: Set variable
+  set_fact:
+    package_build_path: /tmp/auracle/fahcontrol
+    package_name: fahcontrol
+
+- name: Download package fahcontrol
+  shell:
+    cmd: auracle download {{ package_name }}
+    chdir: "{{ auracle_work_dir_path }}"
+  become_method: runas
+  become_user: "{{ target_user }}"
+
+- name: Build package fahcontrol
+  shell: 
+    cmd: yes | makepkg -sr
+    chdir:  "{{ package_build_path }}"
+  become_method: runas
+  become_user: "{{ target_user }}"
+
+- name: Register package name fahcontrol
+  shell:
+    cmd: ls {{ package_name }}*.tar.xz
+    chdir:  "{{ package_build_path }}"
+  register: built_package_name
+
+- name: Install package with pacman
+  pacman:
+    name: "{{ package_build_path }}/{{ built_package_name.stdout_lines[0] }}"
+    state: present
+
+- name: Restart service
+  systemd:
+    name: foldingathome.service
+    daemon_reload: yes
+    enabled: yes
+    state: restarted
+...

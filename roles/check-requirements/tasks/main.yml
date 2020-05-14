@@ -1,0 +1,9 @@
+---
+# tasks file for check-requirements
+
+- name: Check that the target_user variable has been provided to the playbook
+  fail:
+    msg: "The variable 'target_user' must be provided in order to run the playbook."
+  when: target_user is not defined
+
+...

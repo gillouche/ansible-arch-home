@@ -1,0 +1,43 @@
+---
+# tasks file for javascript
+
+- name: Set variable
+  set_fact:
+    config_local_path: /home/{{ target_user }}/workspace/dotfiles
+    npm_bin_path: /home/{{ target_user }}/.config/yarn/global/node_modules/.bin
+
+- name: Create npm bin path
+  file:
+    path: "{{ npm_bin_path }}"
+    state: directory
+    recurse: yes
+    owner: "{{ target_user }}"
+    group: "{{ target_user }}"
+    mode: 0755
+
+- name: Install javascript tooling
+  pacman: 
+    state: latest 
+    name: ['yarn', 'nodejs']
+
+- name: Copy npm config
+  file: 
+    src: "{{ config_local_path }}/npm/npmrc" 
+    dest: /home/{{ target_user }}/.npmrc 
+    state: link
+
+- name: Add npm bin in PATH
+  lineinfile:
+    path: /home/{{ target_user }}/.zshrc
+    line: 'path+=("/home/{{ target_user }}/.config/yarn/global/node_modules/.bin")'
+    state: present
+    insertafter: path=\(\$path\[@\].*
+    
+- name: Add chrome bin in environment variable zshrc
+  lineinfile:
+    path: /home/{{ target_user }}/.zshrc
+    regexp: '^export CHROME_BIN=/usr/bin/chromium'
+    line: 'export CHROME_BIN=/usr/bin/chromium'
+    state: present
+    insertafter: EOF
+...

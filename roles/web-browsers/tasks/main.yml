@@ -1,0 +1,9 @@
+---
+# tasks file for web-browsers
+
+- name: Install common packages
+  pacman:
+    state: latest
+    name: ['firefox', 'chromium']
+
+...

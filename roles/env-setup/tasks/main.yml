@@ -1,0 +1,73 @@
+---
+# tasks file for env-setup
+
+- name: Set variable
+  set_fact:
+    config_local_path: /home/{{ target_user }}/workspace/dotfiles
+    scripts_local_path: /home/{{ target_user }}/workspace/scripts
+
+- name: Create group for user
+  group:
+    name: "{{ target_user }}"
+    state: present
+
+- name: Update main group user
+  user:
+    name: "{{ target_user }}"
+    group: "{{ target_user }}"
+    append: yes
+
+- name: Update groups of user
+  user:
+    name: "{{ target_user }}"
+    groups: "wheel"
+    append: yes
+
+- name: Change home group directory to new group
+  file:
+    path: "/home/{{ target_user }}"
+    owner: "{{ target_user }}"
+    group: "{{ target_user }}"
+
+- name: Create script directory in workspace
+  file:
+    path: "{{ scripts_local_path }}"
+    state: directory
+    owner: "{{ target_user }}"
+    group: "{{ target_user }}"
+    mode: 0750
+    recurse: yes
+
+- name: Copy scripts 
+  template:
+    src: "{{ item.src }}"
+    dest: "{{ scripts_local_path }}/{{ item.path }}"
+    owner: "{{ target_user }}"
+    group: "{{ target_user }}"
+    mode: 0750
+  with_filetree: ../templates/scripts
+
+- name: Check if dotfiles directory already present
+  stat:
+    path: "{{ config_local_path }}"
+  register: config_stat
+
+- name: Pull dotfiles from GitHub
+  git:
+    repo: https://github.com/gillouche/dotfiles.git
+    dest: "{{ config_local_path }}"
+  become_method: runas
+  become_user: "{{ target_user }}"
+  when: not config_stat.stat.exists
+
+- name: Update repo and upgrade
+  pacman: 
+    update_cache: yes
+    upgrade: yes
+
+- name: Install common packages
+  pacman:
+    state: latest
+    name: ['curl', 'wget', 'nmap', 'glances', 'lsof', 'jq', 'dos2unix', 'maven', 'gradle', 'jdk-openjdk', 'pandoc',
+    'the_silver_searcher', 'vlc', 'filezilla', 'libreoffice', 'ranger', 'virtualbox', 'python-virtualenv', 'python-pip']
+...
