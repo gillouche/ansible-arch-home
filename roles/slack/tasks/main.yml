@@ -8,12 +8,18 @@
     package_build_path: /tmp/auracle/slack-desktop
     package_name: slack-desktop
 
+- name: Check if slack is installed
+  shell: 
+    cmd: which slack
+  register: slack_path
+
 - name: Download package
   shell:
     cmd: auracle download {{ package_name }}
     chdir: "{{ auracle_work_dir_path }}"
   become_method: runas
   become_user: "{{ target_user }}"
+  when: not slack_path
 
 - name: Build package
   shell: 
@@ -21,14 +27,17 @@
     chdir:  "{{ package_build_path }}"
   become_method: runas
   become_user: "{{ target_user }}"
+  when: not slack_path
 
 - name: Register package name
   shell:
     cmd: ls {{ package_name }}*.tar.xz
     chdir:  "{{ package_build_path }}"
   register: built_package_name
+  when: not slack_path
 
 - name: Install package with pacman
   pacman:
     name: "{{ package_build_path }}/{{ built_package_name.stdout_lines[0] }}"
     state: present
+  when: not slack_path

@@ -13,12 +13,18 @@
     package_build_path: /tmp/auracle/rstudio-desktop-git
     package_name: rstudio-desktop-git
 
+- name: Check if rstudio is installed
+  shell: 
+    cmd: which rstudio
+  register: rstudio_path
+
 - name: Download package rstudio
   shell:
     cmd: auracle download {{ package_name }}
     chdir: "{{ auracle_work_dir_path }}"
   become_method: runas
   become_user: "{{ target_user }}"
+  when: not rstudio_path
 
 - name: Build package
   shell: 
@@ -26,17 +32,20 @@
     chdir:  "{{ package_build_path }}"
   become_method: runas
   become_user: "{{ target_user }}"
+  when: not rstudio_path
 
 - name: Register package name
   shell:
     cmd: ls {{ package_name }}*.tar.xz
     chdir:  "{{ package_build_path }}"
   register: built_package_name
+  when: not rstudio_path
 
 - name: Install package with pacman
   pacman:
     name: "{{ package_build_path }}/{{ built_package_name.stdout_lines[0] }}"
     state: present
+  when: not rstudio_path
 
 - name: Add jupyter notebook kernel for R
   shell:
@@ -49,4 +58,56 @@
     cmd: julia {{ config_local_path }}/julia/install.jl 
   become_method: runas
   become_user: "{{ target_user }}"
+
+- name: Create jupyterlab directory
+  file:
+    path: /home/{{ target_user }}/.local/share/jupyter/lab
+    state: directory
+    owner: "{{ target_user }}"
+    group: "{{ target_user }}"
+
+- name: Create jupyter directory
+  file:
+    path: /home/{{ target_user }}/.jupyter
+    state: directory
+    owner: "{{ target_user }}"
+    group: "{{ target_user }}"
+    
+- name: Copy jupyter notebook config json
+  copy:
+    src: jupyter_notebook_config.json
+    dest: /home/{{ target_user }}/.jupyter/jupyter_notebook_config.json
+    owner: "{{ target_user }}"
+    group: "{{ target_user }}"
+
+- name: Create jupyter lab user settings directory
+  file:
+    path: /home/{{ target_user }}/.jupyter/lab/user-settings
+    state: directory
+    owner: "{{ target_user }}"
+    group: "{{ target_user }}"
+
+- name: Create symbolic link with dotfiles
+  file:
+    src: "{{ config_local_path }}/jupyterlab"
+    dest: "/home/{{ target_user }}/.jupyter/lab/user-settings/@jupyterlab"
+    state: link
+    owner: "{{ target_user }}"
+    group: "{{ target_user }}"
+
+
+- name: Install or update extensions
+  shell:
+    cmd: "jupyter labextension install {{ item }}"
+  with_items:
+    - "@aquirdturtle/collapsible_headings"
+    - "@bokeh/jupyter_bokeh"
+    - "@jupyter-widgets/jupyterlab-manager"
+    - "@jupyterlab/debugger"
+    - "@jupyterlab/git"
+    - "@jupyterlab/latex"
+    - "@jupyterlab/toc"
+    - "@krassowski/jupyterlab-lsp"
+    - "jupyterlab-cell-flash"
+    - "jupyterlab-execute-time"
 ...

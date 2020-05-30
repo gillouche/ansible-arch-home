@@ -1,12 +1,17 @@
 ---
 # tasks file for foldingathome
 
-- name: Set variable
+- name: Set variable for fahclient
   set_fact:
     config_local_path: /home/{{ target_user }}/workspace/dotfiles
     auracle_work_dir_path: /tmp/auracle
     package_build_path: /tmp/auracle/foldingathome
     package_name: foldingathome
+
+- name: Check if FAHClient is installed
+  shell: 
+    cmd: which FAHClient
+  register: fahclient_path
 
 - name: Download package foldingathome
   shell:
@@ -14,6 +19,7 @@
     chdir: "{{ auracle_work_dir_path }}"
   become_method: runas
   become_user: "{{ target_user }}"
+  when: not fahclient_path
 
 - name: Build package foldingathome
   shell: 
@@ -21,33 +27,43 @@
     chdir:  "{{ package_build_path }}"
   become_method: runas
   become_user: "{{ target_user }}"
+  when: not fahclient_path
 
 - name: Register package name foldingathome
   shell:
     cmd: ls {{ package_name }}*.tar.xz
     chdir:  "{{ package_build_path }}"
   register: built_package_name
+  when: not fahclient_path
 
 - name: Install package with pacman
   pacman:
     name: "{{ package_build_path }}/{{ built_package_name.stdout_lines[0] }}"
     state: present
+  when: not fahclient_path
 
 - name: Remove default config
   file:
     path: /etc/foldingathome/config.xml
     state: absent
+  when: not fahclient_path
 
 - name: Add config
   copy:
     src: "{{ config_local_path }}/foldingathome/config.xml"
     dest: /etc/foldingathome/config.xml
     mode: 0644
+  when: not fahclient_path
 
-- name: Set variable
+- name: Set variable for fahcontrol
   set_fact:
     package_build_path: /tmp/auracle/fahcontrol
     package_name: fahcontrol
+
+- name: Check if FAHControl is installed
+  shell: 
+    cmd: which FAHControl
+  register: fahcontrol_path
 
 - name: Download package fahcontrol
   shell:
@@ -55,6 +71,7 @@
     chdir: "{{ auracle_work_dir_path }}"
   become_method: runas
   become_user: "{{ target_user }}"
+  when: not fahcontrol_path
 
 - name: Build package fahcontrol
   shell: 
@@ -62,17 +79,20 @@
     chdir:  "{{ package_build_path }}"
   become_method: runas
   become_user: "{{ target_user }}"
+  when: not fahcontrol_path
 
 - name: Register package name fahcontrol
   shell:
     cmd: ls {{ package_name }}*.tar.xz
     chdir:  "{{ package_build_path }}"
   register: built_package_name
+  when: not fahcontrol_path
 
 - name: Install package with pacman
   pacman:
     name: "{{ package_build_path }}/{{ built_package_name.stdout_lines[0] }}"
     state: present
+  when: not fahcontrol_path
 
 - name: Restart service
   systemd:
@@ -80,4 +100,5 @@
     daemon_reload: yes
     enabled: yes
     state: restarted
+  when: not fahcontrol_path
 ...

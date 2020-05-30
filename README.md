@@ -1,2 +1,3 @@
 # ansible-arch-home
-Ansible playbook to setup my home Linux distribution
+
+Ansible playbook to setup my linux desktop at home

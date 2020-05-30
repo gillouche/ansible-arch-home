@@ -8,6 +8,11 @@
     package_build_path: /tmp/auracle/jetbrains-toolbox
     package_name: jetbrains-toolbox
 
+- name: Check if jetbrains-toolbox is installed
+  shell: 
+    cmd: which jetbrains-toolbox
+  register: toolbox_path
+
 - name: Copy specific config inotify for intellij
   file: 
     src: "{{ config_local_path }}/idea/idea.conf"
@@ -22,6 +27,7 @@
     chdir: "{{ auracle_work_dir_path }}"
   become_method: runas
   become_user: "{{ target_user }}"
+  when: not toolbox_path
 
 - name: Build package
   shell: 
@@ -29,15 +35,18 @@
     chdir:  "{{ package_build_path }}"
   become_method: runas
   become_user: "{{ target_user }}"
+  when: not toolbox_path
 
 - name: Register package name
   shell:
     cmd: ls {{ package_name }}*.tar.xz
     chdir:  "{{ package_build_path }}"
   register: built_package_name
+  when: not toolbox_path
 
 - name: Install package with pacman
   pacman:
     name: "{{ package_build_path }}/{{ built_package_name.stdout_lines[0] }}"
     state: present
+  when: not toolbox_path
     
