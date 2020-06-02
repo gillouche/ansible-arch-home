@@ -95,19 +95,21 @@
     owner: "{{ target_user }}"
     group: "{{ target_user }}"
 
-
-- name: Install or update extensions
-  shell:
-    cmd: "jupyter labextension install {{ item }}"
-  with_items:
-    - "@aquirdturtle/collapsible_headings"
-    - "@bokeh/jupyter_bokeh"
-    - "@jupyter-widgets/jupyterlab-manager"
-    - "@jupyterlab/debugger"
-    - "@jupyterlab/git"
-    - "@jupyterlab/latex"
-    - "@jupyterlab/toc"
-    - "@krassowski/jupyterlab-lsp"
-    - "jupyterlab-cell-flash"
-    - "jupyterlab-execute-time"
+## disable temporarily until the install procedure is fixed by jupyter lab team
+# - name: Install or update extensions
+#   shell:
+#     cmd: "jupyter labextension install {{ item }}"
+#   become_method: runas
+#   become_user: "{{ target_user }}"
+#   with_items:
+#     - "@aquirdturtle/collapsible_headings"
+#     - "@bokeh/jupyter_bokeh"
+#     - "@jupyter-widgets/jupyterlab-manager"
+#     - "@jupyterlab/debugger"
+#     - "@jupyterlab/git"
+#     - "@jupyterlab/latex"
+#     - "@jupyterlab/toc"
+#     - "@krassowski/jupyterlab-lsp"
+#     - "jupyterlab-cell-flash"
+#     - "jupyterlab-execute-time"
 ...

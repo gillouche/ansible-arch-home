@@ -94,6 +94,45 @@
     state: present
   when: not fahcontrol_path
 
+- name: Set variable for fahviewer
+  set_fact:
+    package_build_path: /tmp/auracle/fahviewer
+    package_name: fahviewer
+
+- name: Check if fahviewer is installed
+  shell: 
+    cmd: which FAHViewer
+  register: fahviewer_path
+
+- name: Download package fahcontrol
+  shell:
+    cmd: auracle download {{ package_name }}
+    chdir: "{{ auracle_work_dir_path }}"
+  become_method: runas
+  become_user: "{{ target_user }}"
+  when: not fahviewer_path
+
+- name: Build package fahviewer
+  shell: 
+    cmd: yes | makepkg -sr
+    chdir:  "{{ package_build_path }}"
+  become_method: runas
+  become_user: "{{ target_user }}"
+  when: not fahviewer_path
+
+- name: Register package name fahviewer
+  shell:
+    cmd: ls {{ package_name }}*.tar.xz
+    chdir:  "{{ package_build_path }}"
+  register: built_package_name
+  when: not fahviewer_path
+
+- name: Install package with pacman
+  pacman:
+    name: "{{ package_build_path }}/{{ built_package_name.stdout_lines[0] }}"
+    state: present
+  when: not fahviewer_path
+
 - name: Restart service
   systemd:
     name: foldingathome.service
